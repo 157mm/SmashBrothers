@@ -23,6 +23,7 @@
       padding: 0 20px;
     }
     .league-title { margin-bottom: 20px; text-align: center; }
+    .loading-message { text-align: center; color: #666; padding: 20px; }
     .tabs-league { display: flex; gap: 4px; border-bottom: var(--wp-border); margin-bottom: 1.5rem; }
     .tab-l { padding: 10px 20px; cursor: pointer; border: none; background: transparent; color: #666; transition: 0.2s; border-bottom: 2px solid transparent; }
     .tab-l.active { color: #000; border-bottom: 2px solid #000; font-weight: 600; }
@@ -57,69 +58,75 @@
     .sync-offline { color: #d32f2f; background: #ffebee; }
   </style>
 
-  <div class="tabs-league">
-    <button class="tab-l active" onclick="switchSmashTab('classement')">Classement</button>
-    <button class="tab-l" onclick="switchSmashTab('match')">Nouveau Match</button>
-    <button class="tab-l" onclick="switchSmashTab('joueurs')">Joueurs</button>
+  <div id="loading-container" class="loading-message">
+    ⏳ Chargement de l'application...
   </div>
 
-  <div id="p-classement" class="page-l active">
-    <div class="card-l" style="padding:0; overflow-x:auto;">
-      <table class="rank-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Joueur</th>
-            <th>ELO</th>
-            <th>Victoires</th>
-            <th>Défaites</th>
-            <th>Tendance</th>
-          </tr>
-        </thead>
-        <tbody id="smash-leaderboard"></tbody>
-      </table>
+  <div id="main-app" style="display:none;">
+    <div class="tabs-league">
+      <button class="tab-l active" onclick="switchSmashTab('classement')">Classement</button>
+      <button class="tab-l" onclick="switchSmashTab('match')">Nouveau Match</button>
+      <button class="tab-l" onclick="switchSmashTab('joueurs')">Joueurs</button>
     </div>
-    <div class="sync-status" id="sync-status-classement"></div>
-  </div>
 
-  <div id="p-match" class="page-l">
-    <div class="card-l">
-      <h3>Enregistrer un résultat</h3>
-      <div class="form-row-l">
-        <div>
-          <label>Joueur 1</label>
-          <select id="s-p1"></select>
-        </div>
-        <div>
-          <label>Joueur 2</label>
-          <select id="s-p2"></select>
-        </div>
+    <div id="p-classement" class="page-l active">
+      <div class="card-l" style="padding:0; overflow-x:auto;">
+        <table class="rank-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Joueur</th>
+              <th>ELO</th>
+              <th>Victoires</th>
+              <th>Défaites</th>
+              <th>Tendance</th>
+            </tr>
+          </thead>
+          <tbody id="smash-leaderboard"></tbody>
+        </table>
       </div>
-      <div class="form-row-l">
-        <div>
-          <label>Stocks J1</label>
-          <input type="number" id="s-v1" value="3" min="0">
-        </div>
-        <div>
-          <label>Stocks J2</label>
-          <input type="number" id="s-v2" value="0" min="0">
-        </div>
-      </div>
-      <button class="btn-smash" onclick="saveSmashMatch()">Valider le match</button>
+      <div class="sync-status" id="sync-status-classement"></div>
     </div>
-    <div class="sync-status" id="sync-status-match"></div>
-  </div>
 
-  <div id="p-joueurs" class="page-l">
-    <div class="card-l">
-      <h3>Ajouter un participant</h3>
-      <div style="display:flex; gap:10px;">
-        <input type="text" id="new-player-name" placeholder="Nom du joueur" onkeypress="if(event.key==='Enter') addNewPlayer()">
-        <button class="btn-smash" onclick="addNewPlayer()">Ajouter</button>
+    <div id="p-match" class="page-l">
+      <div class="card-l">
+        <h3>Enregistrer un résultat</h3>
+        <div class="form-row-l">
+          <div>
+            <label>Joueur 1</label>
+            <select id="s-p1"></select>
+          </div>
+          <div>
+            <label>Joueur 2</label>
+            <select id="s-p2"></select>
+          </div>
+        </div>
+        <div class="form-row-l">
+          <div>
+            <label>Stocks J1</label>
+            <input type="number" id="s-v1" value="3" min="0">
+          </div>
+          <div>
+            <label>Stocks J2</label>
+            <input type="number" id="s-v2" value="0" min="0">
+          </div>
+        </div>
+        <button class="btn-smash" onclick="saveSmashMatch()">Valider le match</button>
       </div>
+      <div class="sync-status" id="sync-status-match"></div>
     </div>
-    <div id="player-list-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:15px;"></div>
-    <div class="sync-status" id="sync-status-joueurs"></div>
+
+    <div id="p-joueurs" class="page-l">
+      <div class="card-l">
+        <h3>Ajouter un participant</h3>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="new-player-name" placeholder="Nom du joueur" onkeypress="if(event.key==='Enter') addNewPlayer()">
+          <button class="btn-smash" onclick="addNewPlayer()">Ajouter</button>
+        </div>
+      </div>
+      <div id="player-list-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:15px;"></div>
+      <div class="sync-status" id="sync-status-joueurs"></div>
+    </div>
   </div>
 
   <script>
@@ -149,6 +156,11 @@
         el.textContent = status;
         el.className = `sync-status ${className}`;
       });
+    }
+
+    function showMainApp() {
+      document.getElementById('loading-container').style.display = 'none';
+      document.getElementById('main-app').style.display = 'block';
     }
 
     // Listener Firebase pour les changements en temps réel
@@ -181,9 +193,9 @@
       if(id === 'joueurs') renderPlayerGrid();
     }
 
-    function getSmashData() {
+    function initializeSmashData() {
       dbRef.once('value').then((snapshot) => {
-        if (snapshot.exists() && snapshot.val().players) {
+        if (snapshot.exists() && snapshot.val() && snapshot.val().players) {
           smashState = snapshot.val();
         } else {
           // Initialiser avec les données par défaut
@@ -194,18 +206,26 @@
           dbRef.set(smashState);
         }
         isInitialized = true;
+        showMainApp();
         renderSmashLeaderboard();
+        setupMatchForm();
+        renderPlayerGrid();
         updateSyncStatus();
         setupFirebaseListener();
       }).catch((error) => {
         console.error('Erreur lors du chargement:', error);
-        alert('Erreur de connexion à Firebase. Vérifie tes paramètres.');
+        alert('Erreur de connexion à Firebase. Vérifie les règles de ta base de données.');
       });
     }
 
     function saveSmashData() {
+      if (!isInitialized) {
+        alert('L\'application est en cours de chargement. Attends un moment.');
+        return;
+      }
       dbRef.set(smashState).catch((error) => {
         console.error('Erreur de sauvegarde:', error);
+        alert('Erreur de sauvegarde: ' + error.message);
       });
     }
 
@@ -233,6 +253,10 @@
     }
 
     function saveSmashMatch() {
+      if (!isInitialized) {
+        alert('L\'application est en cours de chargement.');
+        return;
+      }
       const n1 = document.getElementById('s-p1').value;
       const n2 = document.getElementById('s-p2').value;
       const v1 = parseInt(document.getElementById('s-v1').value);
@@ -264,6 +288,10 @@
     }
 
     function addNewPlayer() {
+      if (!isInitialized) {
+        alert('L\'application est en cours de chargement. Attends un moment.');
+        return;
+      }
       const name = document.getElementById('new-player-name').value.trim();
       if (!name) return alert("Veuillez entrer un nom");
       if (smashState.players[name]) return alert("Ce joueur existe déjà");
@@ -274,6 +302,10 @@
     }
 
     function deletePlayer(name) {
+      if (!isInitialized) {
+        alert('L\'application est en cours de chargement.');
+        return;
+      }
       if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
         delete smashState.players[name];
         saveSmashData();
@@ -299,7 +331,7 @@
     }
 
     // Initialisation
-    getSmashData();
+    initializeSmashData();
   </script>
 </div>
 
