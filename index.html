@@ -25,6 +25,8 @@
     .elo-badge { background: #e1f5fe; color: #0288d1; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
     .btn-smash { background: #000; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: 500; }
     .btn-smash:hover { background: #333; }
+    .btn-delete { background: #d32f2f; color: #fff; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12px; }
+    .btn-delete:hover { background: #b71c1c; }
     
     .form-row-l { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
     input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
@@ -32,6 +34,12 @@
     .avatar-l { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 8px; vertical-align: middle; }
     .trend-up { color: #2e7d32; }
     .trend-down { color: #d32f2f; }
+    
+    .player-card { position: relative; }
+    .player-card-content { background: var(--wp-bg-card); border: var(--wp-border); border-radius: 8px; padding: 15px; text-align: center; }
+    .player-card-name { font-weight: 600; margin-bottom: 5px; }
+    .player-card-stats { font-size: 12px; color: #888; margin-bottom: 10px; }
+    .player-card-delete { margin-top: 10px; }
   </style>
 
   <div class="tabs-league">
@@ -89,11 +97,11 @@
     <div class="card-l">
       <h3>Ajouter un participant</h3>
       <div style="display:flex; gap:10px;">
-        <input type="text" id="new-player-name" placeholder="Nom du joueur">
+        <input type="text" id="new-player-name" placeholder="Nom du joueur" onkeypress="if(event.key==='Enter') addNewPlayer()">
         <button class="btn-smash" onclick="addNewPlayer()">Ajouter</button>
       </div>
     </div>
-    <div id="player-list-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:15px;"></div>
+    <div id="player-list-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:15px;"></div>
   </div>
 
   <script>
@@ -180,20 +188,38 @@
 
     function addNewPlayer() {
       const name = document.getElementById('new-player-name').value.trim();
-      if (name && !smashState.players[name]) {
-        smashState.players[name] = { name, elo: 1000, wins: 0, losses: 0, history: [1000] };
+      if (!name) return alert("Veuillez entrer un nom");
+      if (smashState.players[name]) return alert("Ce joueur existe déjà");
+      
+      smashState.players[name] = { name, elo: 1000, wins: 0, losses: 0, history: [1000] };
+      saveSmashData();
+      renderPlayerGrid();
+      document.getElementById('new-player-name').value = '';
+    }
+
+    function deletePlayer(name) {
+      if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
+        delete smashState.players[name];
         saveSmashData();
         renderPlayerGrid();
-        document.getElementById('new-player-name').value = '';
+        setupMatchForm();
       }
     }
 
     function renderPlayerGrid() {
       const grid = document.getElementById('player-list-grid');
       grid.innerHTML = Object.values(smashState.players).map(p => `
-        <div class="card-l" style="text-align:center; padding:10px;">
-          <div style="font-weight:600;">${p.name}</div>
-          <div style="font-size:12px; color: #888;">${p.elo} pts</div>
+        <div class="player-card">
+          <div class="player-card-content">
+            <div class="player-card-name">${p.name}</div>
+            <div class="player-card-stats">
+              <div>${p.elo} pts</div>
+              <div>${p.wins}W - ${p.losses}L</div>
+            </div>
+            <div class="player-card-delete">
+              <button class="btn-delete" onclick="deletePlayer('${p.name}')">Supprimer</button>
+            </div>
+          </div>
         </div>
       `).join('');
     }
