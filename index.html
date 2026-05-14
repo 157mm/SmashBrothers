@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smash Bros Ultimate League</title>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
 </head>
 <body>
 
@@ -129,6 +127,9 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <script>
     // Firebase config
     const firebaseConfig = {
@@ -142,12 +143,12 @@
     };
 
     // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const database = firebase.database(app);
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
     
     let smashState = { players: {} };
     let isInitialized = false;
-    const dbRef = firebase.database().ref('smashLeague');
+    const dbRef = database.ref('smashLeague');
 
     function updateSyncStatus() {
       const status = '✓ Synchronisé en temps réel';
