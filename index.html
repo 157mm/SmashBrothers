@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smash Bros Ultimate League</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
 </head>
 <body>
 
@@ -18,6 +20,7 @@
       color: #333;
       max-width: 900px;
       margin: 20px auto;
+      padding: 0 20px;
     }
     .league-title { margin-bottom: 20px; text-align: center; }
     .tabs-league { display: flex; gap: 4px; border-bottom: var(--wp-border); margin-bottom: 1.5rem; }
@@ -40,7 +43,6 @@
     .form-row-l { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
     input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
     
-    .avatar-l { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 8px; vertical-align: middle; }
     .trend-up { color: #2e7d32; }
     .trend-down { color: #d32f2f; }
     
@@ -50,9 +52,9 @@
     .player-card-stats { font-size: 12px; color: #888; margin-bottom: 10px; }
     .player-card-delete { margin-top: 10px; }
     
-    .sync-status { font-size: 11px; color: #888; text-align: center; margin-top: 10px; }
-    .sync-online { color: #2e7d32; }
-    .sync-offline { color: #d32f2f; }
+    .sync-status { font-size: 11px; color: #888; text-align: center; margin-top: 10px; padding: 10px; border-radius: 4px; background: #f5f5f5; }
+    .sync-online { color: #2e7d32; background: #e8f5e9; }
+    .sync-offline { color: #d32f2f; background: #ffebee; }
   </style>
 
   <div class="tabs-league">
@@ -121,27 +123,49 @@
   </div>
 
   <script>
-    const API_URL = 'https://smash-league-api.vercel.app/api';
-    let smashState = { players: {}, matches: [] };
-    let isOnline = navigator.onLine;
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAvs_eAQmvgcwtXbqZqlXqNQzi7aP0GE9I",
+      authDomain: "smashbrothers-5359e.firebaseapp.com",
+      databaseURL: "https://smashbrothers-5359e-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "smashbrothers-5359e",
+      storageBucket: "smashbrothers-5359e.firebasestorage.app",
+      messagingSenderId: "593747270233",
+      appId: "1:593747270233:web:42407d8900ca6e5c20ef48"
+    };
 
-    // Vérifier la connexion
-    window.addEventListener('online', () => {
-      isOnline = true;
-      updateSyncStatus();
-      syncDataWithServer();
-    });
-    window.addEventListener('offline', () => {
-      isOnline = false;
-      updateSyncStatus();
-    });
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(app);
+    
+    let smashState = { players: {}, matches: [] };
+    let isInitialized = false;
 
     function updateSyncStatus() {
-      const status = isOnline ? '✓ Synchronisé' : '⚠ Mode hors ligne';
-      const className = isOnline ? 'sync-online' : 'sync-offline';
+      const status = '✓ Synchronisé en temps réel';
+      const className = 'sync-online';
       document.querySelectorAll('.sync-status').forEach(el => {
         el.textContent = status;
         el.className = `sync-status ${className}`;
+      });
+    }
+
+    // Listener Firebase pour les changements en temps réel
+    function setupFirebaseListener() {
+      const dbRef = firebase.database().ref('smashLeague');
+      dbRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          smashState = data;
+          updateSyncStatus();
+          // Refresh le tab actif
+          const activeTab = document.querySelector('.tab-l.active');
+          if (activeTab) {
+            if (activeTab.textContent.includes('Classement')) renderSmashLeaderboard();
+            if (activeTab.textContent.includes('Match')) setupMatchForm();
+            if (activeTab.textContent.includes('Joueurs')) renderPlayerGrid();
+          }
+        }
       });
     }
 
@@ -156,43 +180,34 @@
     }
 
     function getSmashData() {
-      const saved = localStorage.getItem('wp_smash_league_data');
-      if (saved) smashState = JSON.parse(saved);
-      else {
-        ['Mario', 'Link', 'Kirby'].forEach(n => {
-          smashState.players[n] = { name: n, elo: 1000, wins: 0, losses: 0, history: [1000] };
-        });
-        saveSmashData();
-      }
+      const dbRef = firebase.database().ref('smashLeague');
+      dbRef.once('value').then((snapshot) => {
+        if (snapshot.exists()) {
+          smashState = snapshot.val();
+        } else {
+          // Initialiser avec les données par défaut
+          smashState = { players: {}, matches: [] };
+          ['Mario', 'Link', 'Kirby'].forEach(n => {
+            smashState.players[n] = { name: n, elo: 1000, wins: 0, losses: 0, history: [1000] };
+          });
+          firebase.database().ref('smashLeague').set(smashState);
+        }
+        isInitialized = true;
+        renderSmashLeaderboard();
+        updateSyncStatus();
+        setupFirebaseListener();
+      });
     }
 
     function saveSmashData() {
-      localStorage.setItem('wp_smash_league_data', JSON.stringify(smashState));
-      if (isOnline) {
-        syncDataWithServer();
-      }
-    }
-
-    function syncDataWithServer() {
-      fetch(`${API_URL}/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(smashState)
-      })
-      .then(r => r.json())
-      .then(data => {
-        smashState = data;
-        localStorage.setItem('wp_smash_league_data', JSON.stringify(smashState));
-        updateSyncStatus();
-      })
-      .catch(err => console.log('Sync failed, using local data'));
+      firebase.database().ref('smashLeague').set(smashState);
     }
 
     function renderSmashLeaderboard() {
       const container = document.getElementById('smash-leaderboard');
-      const sorted = Object.values(smashState.players).sort((a,b) => b.elo - a.elo);
+      const sorted = Object.values(smashState.players || {}).sort((a,b) => b.elo - a.elo);
       container.innerHTML = sorted.map((p, i) => {
-        const trend = p.history.length > 1 ? p.elo - p.history[p.history.length-2] : 0;
+        const trend = p.history && p.history.length > 1 ? p.elo - p.history[p.history.length-2] : 0;
         return `<tr>
           <td>${i+1}</td>
           <td><strong>${p.name}</strong></td>
@@ -207,7 +222,7 @@
     function setupMatchForm() {
       const p1 = document.getElementById('s-p1');
       const p2 = document.getElementById('s-p2');
-      const options = Object.keys(smashState.players).map(n => `<option value="${n}">${n}</option>`).join('');
+      const options = Object.keys(smashState.players || {}).map(n => `<option value="${n}">${n}</option>`).join('');
       p1.innerHTML = p2.innerHTML = options;
     }
 
@@ -247,7 +262,6 @@
       
       smashState.players[name] = { name, elo: 1000, wins: 0, losses: 0, history: [1000] };
       saveSmashData();
-      renderPlayerGrid();
       document.getElementById('new-player-name').value = '';
     }
 
@@ -255,14 +269,12 @@
       if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
         delete smashState.players[name];
         saveSmashData();
-        renderPlayerGrid();
-        setupMatchForm();
       }
     }
 
     function renderPlayerGrid() {
       const grid = document.getElementById('player-list-grid');
-      grid.innerHTML = Object.values(smashState.players).map(p => `
+      grid.innerHTML = Object.values(smashState.players || {}).map(p => `
         <div class="player-card">
           <div class="player-card-content">
             <div class="player-card-name">${p.name}</div>
@@ -280,15 +292,6 @@
 
     // Initialisation
     getSmashData();
-    updateSyncStatus();
-    renderSmashLeaderboard();
-    
-    // Sync toutes les 5 secondes si online
-    setInterval(() => {
-      if (isOnline) {
-        syncDataWithServer();
-      }
-    }, 5000);
   </script>
 </div>
 
