@@ -1,0 +1,205 @@
+<div id="smash-league-app">
+  <h2 class="league-title">Smash Bros Ultimate League</h2>
+
+  <style>
+    #smash-league-app { 
+      --wp-border: 0.5px solid #ddd;
+      --wp-bg-card: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+      color: #333;
+      max-width: 900px;
+      margin: 20px auto;
+    }
+    .league-title { margin-bottom: 20px; text-align: center; }
+    .tabs-league { display: flex; gap: 4px; border-bottom: var(--wp-border); margin-bottom: 1.5rem; }
+    .tab-l { padding: 10px 20px; cursor: pointer; border: none; background: transparent; color: #666; transition: 0.2s; border-bottom: 2px solid transparent; }
+    .tab-l.active { color: #000; border-bottom: 2px solid #000; font-weight: 600; }
+    .page-l { display: none; }
+    .page-l.active { display: block; }
+    
+    .card-l { background: var(--wp-bg-card); border: var(--wp-border); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .rank-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .rank-table th { text-align: left; padding: 12px; border-bottom: var(--wp-border); font-size: 13px; color: #888; }
+    .rank-table td { padding: 12px; border-bottom: var(--wp-border); }
+    
+    .elo-badge { background: #e1f5fe; color: #0288d1; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+    .btn-smash { background: #000; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: 500; }
+    .btn-smash:hover { background: #333; }
+    
+    .form-row-l { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+    input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    
+    .avatar-l { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 8px; vertical-align: middle; }
+    .trend-up { color: #2e7d32; }
+    .trend-down { color: #d32f2f; }
+  </style>
+
+  <div class="tabs-league">
+    <button class="tab-l active" onclick="switchSmashTab('classement')">Classement</button>
+    <button class="tab-l" onclick="switchSmashTab('match')">Nouveau Match</button>
+    <button class="tab-l" onclick="switchSmashTab('joueurs')">Joueurs</button>
+  </div>
+
+  <div id="p-classement" class="page-l active">
+    <div class="card-l" style="padding:0; overflow-x:auto;">
+      <table class="rank-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Joueur</th>
+            <th>ELO</th>
+            <th>Victoires</th>
+            <th>Défaites</th>
+            <th>Tendance</th>
+          </tr>
+        </thead>
+        <tbody id="smash-leaderboard"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="p-match" class="page-l">
+    <div class="card-l">
+      <h3>Enregistrer un résultat</h3>
+      <div class="form-row-l">
+        <div>
+          <label>Joueur 1</label>
+          <select id="s-p1"></select>
+        </div>
+        <div>
+          <label>Joueur 2</label>
+          <select id="s-p2"></select>
+        </div>
+      </div>
+      <div class="form-row-l">
+        <div>
+          <label>Stocks J1</label>
+          <input type="number" id="s-v1" value="3" min="0">
+        </div>
+        <div>
+          <label>Stocks J2</label>
+          <input type="number" id="s-v2" value="0" min="0">
+        </div>
+      </div>
+      <button class="btn-smash" onclick="saveSmashMatch()">Valider le match</button>
+    </div>
+  </div>
+
+  <div id="p-joueurs" class="page-l">
+    <div class="card-l">
+      <h3>Ajouter un participant</h3>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="new-player-name" placeholder="Nom du joueur">
+        <button class="btn-smash" onclick="addNewPlayer()">Ajouter</button>
+      </div>
+    </div>
+    <div id="player-list-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:15px;"></div>
+  </div>
+
+  <script>
+    const SMASH_KEY = 'wp_smash_league_data';
+    let smashState = { players: {}, matches: [] };
+
+    function switchSmashTab(id) {
+      document.querySelectorAll('.page-l').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-l').forEach(t => t.classList.remove('active'));
+      document.getElementById('p-' + id).classList.add('active');
+      event.currentTarget.classList.add('active');
+      if(id === 'classement') renderSmashLeaderboard();
+      if(id === 'match') setupMatchForm();
+      if(id === 'joueurs') renderPlayerGrid();
+    }
+
+    function getSmashData() {
+      const saved = localStorage.getItem(SMASH_KEY);
+      if (saved) smashState = JSON.parse(saved);
+      else {
+        // Init par défaut
+        ['Mario', 'Link', 'Kirby'].forEach(n => {
+          smashState.players[n] = { name: n, elo: 1000, wins: 0, losses: 0, history: [1000] };
+        });
+      }
+    }
+
+    function saveSmashData() {
+      localStorage.setItem(SMASH_KEY, JSON.stringify(smashState));
+    }
+
+    function renderSmashLeaderboard() {
+      const container = document.getElementById('smash-leaderboard');
+      const sorted = Object.values(smashState.players).sort((a,b) => b.elo - a.elo);
+      container.innerHTML = sorted.map((p, i) => {
+        const trend = p.history.length > 1 ? p.elo - p.history[p.history.length-2] : 0;
+        return `<tr>
+          <td>${i+1}</td>
+          <td><strong>${p.name}</strong></td>
+          <td><span class="elo-badge">${p.elo}</span></td>
+          <td>${p.wins}</td>
+          <td>${p.losses}</td>
+          <td class="${trend > 0 ? 'trend-up' : 'trend-down'}">${trend > 0 ? '▲' : trend < 0 ? '▼' : '-'} ${trend !== 0 ? Math.abs(trend) : ''}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function setupMatchForm() {
+      const p1 = document.getElementById('s-p1');
+      const p2 = document.getElementById('s-p2');
+      const options = Object.keys(smashState.players).map(n => `<option value="${n}">${n}</option>`).join('');
+      p1.innerHTML = p2.innerHTML = options;
+    }
+
+    function saveSmashMatch() {
+      const n1 = document.getElementById('s-p1').value;
+      const n2 = document.getElementById('s-p2').value;
+      const v1 = parseInt(document.getElementById('s-v1').value);
+      const v2 = parseInt(document.getElementById('s-v2').value);
+
+      if (n1 === n2) return alert("Choisissez deux joueurs différents");
+
+      const p1 = smashState.players[n1];
+      const p2 = smashState.players[n2];
+
+      // Calcul ELO simplifié
+      const K = 32;
+      const expected1 = 1 / (1 + Math.pow(10, (p2.elo - p1.elo) / 400));
+      const actual1 = v1 > v2 ? 1 : 0;
+      const change = Math.round(K * (actual1 - expected1));
+
+      p1.elo += change;
+      p2.elo -= change;
+      p1.history.push(p1.elo);
+      p2.history.push(p2.elo);
+
+      if (v1 > v2) { p1.wins++; p2.losses++; } 
+      else { p2.wins++; p1.losses++; }
+
+      saveSmashData();
+      alert("Match enregistré !");
+      switchSmashTab('classement');
+    }
+
+    function addNewPlayer() {
+      const name = document.getElementById('new-player-name').value.trim();
+      if (name && !smashState.players[name]) {
+        smashState.players[name] = { name, elo: 1000, wins: 0, losses: 0, history: [1000] };
+        saveSmashData();
+        renderPlayerGrid();
+        document.getElementById('new-player-name').value = '';
+      }
+    }
+
+    function renderPlayerGrid() {
+      const grid = document.getElementById('player-list-grid');
+      grid.innerHTML = Object.values(smashState.players).map(p => `
+        <div class="card-l" style="text-align:center; padding:10px;">
+          <div style="font-weight:600;">${p.name}</div>
+          <div style="font-size:12px; color: #888;">${p.elo} pts</div>
+        </div>
+      `).join('');
+    }
+
+    // Initialisation
+    getSmashData();
+    renderSmashLeaderboard();
+  </script>
+</div>
