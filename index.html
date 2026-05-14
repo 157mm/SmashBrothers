@@ -1,3 +1,12 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smash Bros Ultimate League</title>
+</head>
+<body>
+
 <div id="smash-league-app">
   <h2 class="league-title">Smash Bros Ultimate League</h2>
 
@@ -40,6 +49,10 @@
     .player-card-name { font-weight: 600; margin-bottom: 5px; }
     .player-card-stats { font-size: 12px; color: #888; margin-bottom: 10px; }
     .player-card-delete { margin-top: 10px; }
+    
+    .sync-status { font-size: 11px; color: #888; text-align: center; margin-top: 10px; }
+    .sync-online { color: #2e7d32; }
+    .sync-offline { color: #d32f2f; }
   </style>
 
   <div class="tabs-league">
@@ -64,6 +77,7 @@
         <tbody id="smash-leaderboard"></tbody>
       </table>
     </div>
+    <div class="sync-status" id="sync-status-classement"></div>
   </div>
 
   <div id="p-match" class="page-l">
@@ -91,6 +105,7 @@
       </div>
       <button class="btn-smash" onclick="saveSmashMatch()">Valider le match</button>
     </div>
+    <div class="sync-status" id="sync-status-match"></div>
   </div>
 
   <div id="p-joueurs" class="page-l">
@@ -102,11 +117,33 @@
       </div>
     </div>
     <div id="player-list-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:15px;"></div>
+    <div class="sync-status" id="sync-status-joueurs"></div>
   </div>
 
   <script>
-    const SMASH_KEY = 'wp_smash_league_data';
+    const API_URL = 'https://smash-league-api.vercel.app/api';
     let smashState = { players: {}, matches: [] };
+    let isOnline = navigator.onLine;
+
+    // Vérifier la connexion
+    window.addEventListener('online', () => {
+      isOnline = true;
+      updateSyncStatus();
+      syncDataWithServer();
+    });
+    window.addEventListener('offline', () => {
+      isOnline = false;
+      updateSyncStatus();
+    });
+
+    function updateSyncStatus() {
+      const status = isOnline ? '✓ Synchronisé' : '⚠ Mode hors ligne';
+      const className = isOnline ? 'sync-online' : 'sync-offline';
+      document.querySelectorAll('.sync-status').forEach(el => {
+        el.textContent = status;
+        el.className = `sync-status ${className}`;
+      });
+    }
 
     function switchSmashTab(id) {
       document.querySelectorAll('.page-l').forEach(p => p.classList.remove('active'));
@@ -119,18 +156,36 @@
     }
 
     function getSmashData() {
-      const saved = localStorage.getItem(SMASH_KEY);
+      const saved = localStorage.getItem('wp_smash_league_data');
       if (saved) smashState = JSON.parse(saved);
       else {
-        // Init par défaut
         ['Mario', 'Link', 'Kirby'].forEach(n => {
           smashState.players[n] = { name: n, elo: 1000, wins: 0, losses: 0, history: [1000] };
         });
+        saveSmashData();
       }
     }
 
     function saveSmashData() {
-      localStorage.setItem(SMASH_KEY, JSON.stringify(smashState));
+      localStorage.setItem('wp_smash_league_data', JSON.stringify(smashState));
+      if (isOnline) {
+        syncDataWithServer();
+      }
+    }
+
+    function syncDataWithServer() {
+      fetch(`${API_URL}/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(smashState)
+      })
+      .then(r => r.json())
+      .then(data => {
+        smashState = data;
+        localStorage.setItem('wp_smash_league_data', JSON.stringify(smashState));
+        updateSyncStatus();
+      })
+      .catch(err => console.log('Sync failed, using local data'));
     }
 
     function renderSmashLeaderboard() {
@@ -167,7 +222,6 @@
       const p1 = smashState.players[n1];
       const p2 = smashState.players[n2];
 
-      // Calcul ELO simplifié
       const K = 32;
       const expected1 = 1 / (1 + Math.pow(10, (p2.elo - p1.elo) / 400));
       const actual1 = v1 > v2 ? 1 : 0;
@@ -226,6 +280,17 @@
 
     // Initialisation
     getSmashData();
+    updateSyncStatus();
     renderSmashLeaderboard();
+    
+    // Sync toutes les 5 secondes si online
+    setInterval(() => {
+      if (isOnline) {
+        syncDataWithServer();
+      }
+    }, 5000);
   </script>
 </div>
+
+</body>
+</html>
