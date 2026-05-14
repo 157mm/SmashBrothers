@@ -138,8 +138,9 @@
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database(app);
     
-    let smashState = { players: {}, matches: [] };
+    let smashState = { players: {} };
     let isInitialized = false;
+    const dbRef = firebase.database().ref('smashLeague');
 
     function updateSyncStatus() {
       const status = '✓ Synchronisé en temps réel';
@@ -152,10 +153,9 @@
 
     // Listener Firebase pour les changements en temps réel
     function setupFirebaseListener() {
-      const dbRef = firebase.database().ref('smashLeague');
       dbRef.on('value', (snapshot) => {
         const data = snapshot.val();
-        if (data) {
+        if (data && data.players) {
           smashState = data;
           updateSyncStatus();
           // Refresh le tab actif
@@ -166,6 +166,8 @@
             if (activeTab.textContent.includes('Joueurs')) renderPlayerGrid();
           }
         }
+      }, (error) => {
+        console.error('Erreur Firebase:', error);
       });
     }
 
@@ -180,27 +182,31 @@
     }
 
     function getSmashData() {
-      const dbRef = firebase.database().ref('smashLeague');
       dbRef.once('value').then((snapshot) => {
-        if (snapshot.exists()) {
+        if (snapshot.exists() && snapshot.val().players) {
           smashState = snapshot.val();
         } else {
           // Initialiser avec les données par défaut
-          smashState = { players: {}, matches: [] };
+          smashState = { players: {} };
           ['Mario', 'Link', 'Kirby'].forEach(n => {
             smashState.players[n] = { name: n, elo: 1000, wins: 0, losses: 0, history: [1000] };
           });
-          firebase.database().ref('smashLeague').set(smashState);
+          dbRef.set(smashState);
         }
         isInitialized = true;
         renderSmashLeaderboard();
         updateSyncStatus();
         setupFirebaseListener();
+      }).catch((error) => {
+        console.error('Erreur lors du chargement:', error);
+        alert('Erreur de connexion à Firebase. Vérifie tes paramètres.');
       });
     }
 
     function saveSmashData() {
-      firebase.database().ref('smashLeague').set(smashState);
+      dbRef.set(smashState).catch((error) => {
+        console.error('Erreur de sauvegarde:', error);
+      });
     }
 
     function renderSmashLeaderboard() {
@@ -244,6 +250,8 @@
 
       p1.elo += change;
       p2.elo -= change;
+      if (!p1.history) p1.history = [1000];
+      if (!p2.history) p2.history = [1000];
       p1.history.push(p1.elo);
       p2.history.push(p2.elo);
 
