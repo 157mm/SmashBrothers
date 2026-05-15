@@ -55,6 +55,13 @@
     .form-row-l { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
     input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
     
+    .character-search-wrapper { position: relative; margin-bottom: 15px; }
+    .character-search-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    .character-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto; display: none; z-index: 1000; }
+    .character-dropdown.active { display: block; }
+    .character-option { padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+    .character-option:hover { background: #f5f5f5; }
+    
     .trend-up { color: #2e7d32; }
     .trend-down { color: #d32f2f; }
     
@@ -108,11 +115,25 @@
         <div class="form-row-l">
           <div>
             <label>Joueur 1</label>
-            <select id="s-p1"></select>
+            <input type="text" id="s-p1-input" placeholder="Recherche un joueur..." onkeyup="filterPlayerSearch('p1')">
+            <div id="p1-dropdown" class="character-dropdown"></div>
           </div>
           <div>
             <label>Joueur 2</label>
-            <select id="s-p2"></select>
+            <input type="text" id="s-p2-input" placeholder="Recherche un joueur..." onkeyup="filterPlayerSearch('p2')">
+            <div id="p2-dropdown" class="character-dropdown"></div>
+          </div>
+        </div>
+        <div class="form-row-l">
+          <div>
+            <label>Personnage J1</label>
+            <input type="text" id="s-c1-input" placeholder="Recherche un perso..." onkeyup="filterCharacterSearch('c1')">
+            <div id="c1-dropdown" class="character-dropdown"></div>
+          </div>
+          <div>
+            <label>Personnage J2</label>
+            <input type="text" id="s-c2-input" placeholder="Recherche un perso..." onkeyup="filterCharacterSearch('c2')">
+            <div id="c2-dropdown" class="character-dropdown"></div>
           </div>
         </div>
         <div class="form-row-l">
@@ -152,6 +173,50 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
+    // Liste complète des personnages de Smash Bros Ultimate
+    const smashCharacters = [
+      'Mario', 'Luigi', 'Peach', 'Bowser', 'Yoshi', 'Rosalina', 'Daisy', 'Waluigi',
+      'Donkey Kong', 'Diddy Kong', 'Wario',
+      'Link', 'Zelda', 'Sheik', 'Ganondorf', 'Young Link', 'Toon Link',
+      'Pikachu', 'Mewtwo', 'Charizard', 'Jigglypuff',
+      'Snorlax', 'Pichu', 'Squirtle', 'Ivysaur',
+      'Samus', 'Zero Suit Samus', 'Ridley',
+      'Kirk', 'Meta Knight',
+      'Fox', 'Falco', 'Wolf',
+      'Captain Falcon',
+      'Ness', 'Lucas', 'Ike', 'Marth', 'Roy', 'Chrom', 'Lucina', 'Corrin',
+      'Samurai', 'Shulk', 'Mii Gunner', 'Mii Swordfighter', 'Mii Brawler',
+      'Sonic', 'Shadow', 'Bayonetta',
+      'Mega Man', 'Pac-Man',
+      'Ryu', 'Ken', 'Juri',
+      'Villager', 'Tom Nook', 'Isabelle',
+      'Mr. Game & Watch', 'ROB',
+      'Duck Hunt', 'R.O.B',
+      'Wii Fit Trainer',
+      'Little Mac',
+      'Greninja',
+      'Palutena', 'Dark Pit', 'Pit',
+      'Robin', 'Tharja',
+      'Lucario',
+      'Incineroar',
+      'Cloud', 'Sephiroth',
+      'Bayonetta',
+      'Corrin',
+      'Byleth',
+      'Banjo & Kazooie',
+      'Terry',
+      'Kazuya',
+      'Sora',
+      'Steve',
+      'Alex',
+      'Creeper',
+      'Ender Dragon',
+      'Joker', 'Persona',
+      'Hero', 'Erdrick',
+      'Piranha Plant',
+      'Arsene', 'Joker'
+    ];
+
     // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyAvs_eAQmvgcwtXbqZqlXqNQzi7aP0GE9I",
@@ -170,6 +235,11 @@
     let smashState = { players: {}, matches: [] };
     let isInitialized = false;
     const dbRef = database.ref('smashLeague');
+    
+    let selectedPlayer1 = '';
+    let selectedPlayer2 = '';
+    let selectedChar1 = '';
+    let selectedChar2 = '';
 
     function updateSyncStatus() {
       const status = '✓ Synchronisé en temps réel';
@@ -185,14 +255,12 @@
       document.getElementById('main-app').style.display = 'block';
     }
 
-    // Listener Firebase pour les changements en temps réel
     function setupFirebaseListener() {
       dbRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data && data.players) {
           smashState = data;
           updateSyncStatus();
-          // Refresh le tab actif
           const activeTab = document.querySelector('.tab-l.active');
           if (activeTab) {
             if (activeTab.textContent.includes('Classement')) renderSmashLeaderboard();
@@ -222,7 +290,6 @@
         if (snapshot.exists() && snapshot.val() && snapshot.val().players) {
           smashState = snapshot.val();
         } else {
-          // Initialiser avec les données par défaut
           smashState = { players: {}, matches: [] };
           ['Mario', 'Link', 'Kirby'].forEach(n => {
             smashState.players[n] = { name: n, elo: 1000, wins: 0, losses: 0, history: [1000] };
@@ -239,19 +306,156 @@
         setupFirebaseListener();
       }).catch((error) => {
         console.error('Erreur lors du chargement:', error);
-        alert('Erreur de connexion à Firebase. Vérifie les règles de ta base de données.');
+        alert('Erreur de connexion à Firebase.');
       });
     }
 
     function saveSmashData() {
       if (!isInitialized) {
-        alert('L\'application est en cours de chargement. Attends un moment.');
+        alert('L\'application est en cours de chargement.');
         return;
       }
       dbRef.set(smashState).catch((error) => {
         console.error('Erreur de sauvegarde:', error);
         alert('Erreur de sauvegarde: ' + error.message);
       });
+    }
+
+    function setupMatchForm() {
+      const players = Object.keys(smashState.players || {});
+      
+      // Joueur 1
+      document.getElementById('p1-dropdown').innerHTML = players.map(p => 
+        `<div class="character-option" onclick="selectPlayer('p1', '${p}')">${p}</div>`
+      ).join('');
+      
+      // Joueur 2
+      document.getElementById('p2-dropdown').innerHTML = players.map(p => 
+        `<div class="character-option" onclick="selectPlayer('p2', '${p}')">${p}</div>`
+      ).join('');
+      
+      // Personnages
+      const charOptions = smashCharacters.map(c => 
+        `<div class="character-option" onclick="selectCharacter('c1', '${c}')">${c}</div>`
+      ).join('');
+      document.getElementById('c1-dropdown').innerHTML = charOptions;
+      
+      const charOptions2 = smashCharacters.map(c => 
+        `<div class="character-option" onclick="selectCharacter('c2', '${c}')">${c}</div>`
+      ).join('');
+      document.getElementById('c2-dropdown').innerHTML = charOptions2;
+    }
+
+    function filterPlayerSearch(player) {
+      const input = document.getElementById(`s-${player}-input`).value.toLowerCase();
+      const dropdown = document.getElementById(`${player}-dropdown`);
+      const players = Object.keys(smashState.players || {});
+      
+      const filtered = players.filter(p => p.toLowerCase().includes(input));
+      dropdown.innerHTML = filtered.map(p => 
+        `<div class="character-option" onclick="selectPlayer('${player}', '${p}')">${p}</div>`
+      ).join('');
+      dropdown.classList.add('active');
+    }
+
+    function filterCharacterSearch(char) {
+      const input = document.getElementById(`s-${char}-input`).value.toLowerCase();
+      const dropdown = document.getElementById(`${char}-dropdown`);
+      
+      const filtered = smashCharacters.filter(c => c.toLowerCase().includes(input));
+      dropdown.innerHTML = filtered.map(c => 
+        `<div class="character-option" onclick="selectCharacter('${char}', '${c}')">${c}</div>`
+      ).join('');
+      dropdown.classList.add('active');
+    }
+
+    function selectPlayer(player, name) {
+      if (player === 'p1') {
+        selectedPlayer1 = name;
+        document.getElementById('s-p1-input').value = name;
+      } else {
+        selectedPlayer2 = name;
+        document.getElementById('s-p2-input').value = name;
+      }
+      document.getElementById(`${player}-dropdown`).classList.remove('active');
+    }
+
+    function selectCharacter(char, name) {
+      if (char === 'c1') {
+        selectedChar1 = name;
+        document.getElementById('s-c1-input').value = name;
+      } else {
+        selectedChar2 = name;
+        document.getElementById('s-c2-input').value = name;
+      }
+      document.getElementById(`${char}-dropdown`).classList.remove('active');
+    }
+
+    function saveSmashMatch() {
+      if (!isInitialized) {
+        alert('L\'application est en cours de chargement.');
+        return;
+      }
+      
+      if (!selectedPlayer1 || !selectedPlayer2) {
+        alert('Sélectionne les deux joueurs');
+        return;
+      }
+      if (!selectedChar1 || !selectedChar2) {
+        alert('Sélectionne les deux personnages');
+        return;
+      }
+      if (selectedPlayer1 === selectedPlayer2) {
+        alert('Sélectionne deux joueurs différents');
+        return;
+      }
+
+      const v1 = parseInt(document.getElementById('s-v1').value);
+      const v2 = parseInt(document.getElementById('s-v2').value);
+
+      const p1 = smashState.players[selectedPlayer1];
+      const p2 = smashState.players[selectedPlayer2];
+
+      const K = 32;
+      const expected1 = 1 / (1 + Math.pow(10, (p2.elo - p1.elo) / 400));
+      const actual1 = v1 > v2 ? 1 : 0;
+      const change = Math.round(K * (actual1 - expected1));
+
+      p1.elo += change;
+      p2.elo -= change;
+      if (!p1.history) p1.history = [1000];
+      if (!p2.history) p2.history = [1000];
+      p1.history.push(p1.elo);
+      p2.history.push(p2.elo);
+
+      if (v1 > v2) { p1.wins++; p2.losses++; } 
+      else { p2.wins++; p1.losses++; }
+
+      if (!smashState.matches) smashState.matches = [];
+      smashState.matches.push({
+        date: new Date().toLocaleString('fr-FR'),
+        player1: selectedPlayer1,
+        player2: selectedPlayer2,
+        char1: selectedChar1,
+        char2: selectedChar2,
+        stocks1: v1,
+        stocks2: v2,
+        eloChange1: change,
+        eloChange2: -change,
+        winner: v1 > v2 ? selectedPlayer1 : selectedPlayer2
+      });
+
+      saveSmashData();
+      alert("Match enregistré !");
+      selectedPlayer1 = '';
+      selectedPlayer2 = '';
+      selectedChar1 = '';
+      selectedChar2 = '';
+      document.getElementById('s-p1-input').value = '';
+      document.getElementById('s-p2-input').value = '';
+      document.getElementById('s-c1-input').value = '';
+      document.getElementById('s-c2-input').value = '';
+      switchSmashTab('classement');
     }
 
     function renderSmashLeaderboard() {
@@ -270,61 +474,6 @@
       }).join('');
     }
 
-    function setupMatchForm() {
-      const p1 = document.getElementById('s-p1');
-      const p2 = document.getElementById('s-p2');
-      const options = Object.keys(smashState.players || {}).map(n => `<option value="${n}">${n}</option>`).join('');
-      p1.innerHTML = p2.innerHTML = options;
-    }
-
-    function saveSmashMatch() {
-      if (!isInitialized) {
-        alert('L\'application est en cours de chargement.');
-        return;
-      }
-      const n1 = document.getElementById('s-p1').value;
-      const n2 = document.getElementById('s-p2').value;
-      const v1 = parseInt(document.getElementById('s-v1').value);
-      const v2 = parseInt(document.getElementById('s-v2').value);
-
-      if (n1 === n2) return alert("Choisissez deux joueurs différents");
-
-      const p1 = smashState.players[n1];
-      const p2 = smashState.players[n2];
-
-      const K = 32;
-      const expected1 = 1 / (1 + Math.pow(10, (p2.elo - p1.elo) / 400));
-      const actual1 = v1 > v2 ? 1 : 0;
-      const change = Math.round(K * (actual1 - expected1));
-
-      p1.elo += change;
-      p2.elo -= change;
-      if (!p1.history) p1.history = [1000];
-      if (!p2.history) p2.history = [1000];
-      p1.history.push(p1.elo);
-      p2.history.push(p2.elo);
-
-      if (v1 > v2) { p1.wins++; p2.losses++; } 
-      else { p2.wins++; p1.losses++; }
-
-      // Ajouter à l'historique
-      if (!smashState.matches) smashState.matches = [];
-      smashState.matches.push({
-        date: new Date().toLocaleString('fr-FR'),
-        player1: n1,
-        player2: n2,
-        stocks1: v1,
-        stocks2: v2,
-        eloChange1: change,
-        eloChange2: -change,
-        winner: v1 > v2 ? n1 : n2
-      });
-
-      saveSmashData();
-      alert("Match enregistré !");
-      switchSmashTab('classement');
-    }
-
     function renderMatchHistory() {
       const container = document.getElementById('matches-list');
       const matches = smashState.matches || [];
@@ -334,7 +483,6 @@
         return;
       }
 
-      // Afficher les matchs du plus récent au plus ancien
       container.innerHTML = matches.slice().reverse().map((match, idx) => {
         const isWinner1 = match.winner === match.player1;
         return `
@@ -348,6 +496,7 @@
                 <div class="player-name ${isWinner1 ? 'match-winner' : 'match-loser'}">
                   ${match.player1} ${isWinner1 ? '🏆' : ''}
                 </div>
+                <div style="font-size: 11px; color: #666;">${match.char1}</div>
                 <div class="player-score">${match.stocks1}</div>
                 <div class="match-elo-change ${match.eloChange1 > 0 ? 'elo-gain' : 'elo-loss'}">
                   ${match.eloChange1 > 0 ? '+' : ''}${match.eloChange1} ELO
@@ -358,6 +507,7 @@
                 <div class="player-name ${!isWinner1 ? 'match-winner' : 'match-loser'}">
                   ${match.player2} ${!isWinner1 ? '🏆' : ''}
                 </div>
+                <div style="font-size: 11px; color: #666;">${match.char2}</div>
                 <div class="player-score">${match.stocks2}</div>
                 <div class="match-elo-change ${match.eloChange2 > 0 ? 'elo-gain' : 'elo-loss'}">
                   ${match.eloChange2 > 0 ? '+' : ''}${match.eloChange2} ELO
@@ -371,7 +521,7 @@
 
     function addNewPlayer() {
       if (!isInitialized) {
-        alert('L\'application est en cours de chargement. Attends un moment.');
+        alert('L\'application est en cours de chargement.');
         return;
       }
       const name = document.getElementById('new-player-name').value.trim();
@@ -412,7 +562,6 @@
       `).join('');
     }
 
-    // Initialisation
     initializeSmashData();
   </script>
 </div>
