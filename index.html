@@ -507,7 +507,7 @@ function selectCharacter(char, name) {
     function renderPlayerGrid() {
       const grid = document.getElementById('player-list-grid');
       grid.innerHTML = Object.values(smashState.players || {}).map(p => `
-        <div class="player-card">
+        <div class="player-card" onclick='openPlayerProfile('${ip.name}')">
           <div class="player-card-content">
             <div class="player-card-name">${p.name}</div>
             <div class="player-card-stats">
@@ -521,6 +521,60 @@ function selectCharacter(char, name) {
         </div>
       `).join('');
     }
+    
+    function openPlayerProfile(playerName) {
+  const player = smashState.players[playerName];
+  const matches = smashState.matches || [];
+
+  const playerMatches = matches.filter(m => m.player1 === playerName || m.player2 === playerName);
+  const totalMatches = playerMatches.length;
+  const winrate = totalMatches > 0 ? Math.round((player.wins / totalMatches) * 100) : 0;
+
+  const charStats = {};
+  playerMatches.forEach(m => {
+    const isP1 = m.player1 === playerName;
+    const char = isP1 ? m.char1 : m.char2;
+    const won = m.winner === playerName;
+    if (!charStats[char]) charStats[char] = { played: 0, wins: 0 };
+    charStats[char].played++;
+    if (won) charStats[char].wins++;
+  });
+
+  const charList = Object.entries(charStats)
+    .sort((a, b) => b[1].played - a[1].played)
+    .map(([char, stats]) => {
+      const charWinrate = Math.round((stats.wins / stats.played) * 100);
+      const slug = char.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return `
+        <div class="profile-char-item">
+          <img src="img/${slug}.png" onerror="this.style.display='none'"
+               style="width:32px; height:32px; object-fit:contain;">
+          <span>${char}</span>
+          <span>${stats.played} matchs — ${charWinrate}% victoires</span>
+        </div>`;
+    }).join('');
+
+  document.getElementById('player-list-grid').innerHTML = `
+    <div class="player-profile">
+      <button onclick="renderPlayerGrid()" style="margin-bottom:16px;">← Retour</button>
+      <div class="profile-header">
+        <img src="img/joueurs/${playerName.toLowerCase()}.png" 
+             onerror="this.style.display='none'"
+             style="width:80px; height:80px; border-radius:50%; object-fit:cover;">
+        <h2>${playerName}</h2>
+        <div>${player.elo} pts ELO</div>
+      </div>
+      <div class="profile-stats">
+        <div><strong>${totalMatches}</strong> matchs joués</div>
+        <div><strong>${player.wins}</strong> victoires</div>
+        <div><strong>${player.losses}</strong> défaites</div>
+        <div><strong>${winrate}%</strong> winrate</div>
+      </div>
+      <h3>Personnages joués</h3>
+      ${charList}
+    </div>
+  `;
+}
 
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.dropdown-container')) {
