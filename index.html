@@ -55,12 +55,15 @@
     .form-row-l { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
     input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
     
-    .search-wrapper { position: relative; margin-bottom: 15px; }
-    .search-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    .dropdown-menu { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .dropdown-menu.show { display: block; }
-    .dropdown-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
-    .dropdown-item:hover { background: #f5f5f5; }
+    .dropdown-container { position: relative; }
+    .dropdown-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; cursor: pointer; }
+    .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .dropdown-list.show { display: block; }
+    .dropdown-list-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+    .dropdown-list-item:hover { background: #f5f5f5; }
+    .dropdown-list-item.selected { background: #e3f2fd; font-weight: 600; }
+    
+    .selected-display { color: #666; font-size: 12px; margin-top: 5px; min-height: 16px; }
     
     .trend-up { color: #2e7d32; }
     .trend-down { color: #d32f2f; }
@@ -115,37 +118,37 @@
         <div class="form-row-l">
           <div>
             <label>Joueur 1</label>
-            <div class="search-wrapper">
-              <input type="text" id="search-p1" class="search-input" placeholder="Recherche un joueur..." onkeyup="filterPlayers('p1')">
-              <div id="dropdown-p1" class="dropdown-menu"></div>
+            <div class="dropdown-container">
+              <div class="dropdown-input" onclick="toggleDropdown('p1')">Sélectionne un joueur</div>
+              <div class="dropdown-list" id="dropdown-p1"></div>
             </div>
-            <div id="selected-p1" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
+            <div class="selected-display" id="display-p1"></div>
           </div>
           <div>
             <label>Joueur 2</label>
-            <div class="search-wrapper">
-              <input type="text" id="search-p2" class="search-input" placeholder="Recherche un joueur..." onkeyup="filterPlayers('p2')">
-              <div id="dropdown-p2" class="dropdown-menu"></div>
+            <div class="dropdown-container">
+              <div class="dropdown-input" onclick="toggleDropdown('p2')">Sélectionne un joueur</div>
+              <div class="dropdown-list" id="dropdown-p2"></div>
             </div>
-            <div id="selected-p2" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
+            <div class="selected-display" id="display-p2"></div>
           </div>
         </div>
         <div class="form-row-l">
           <div>
             <label>Personnage J1</label>
-            <div class="search-wrapper">
-              <input type="text" id="search-c1" class="search-input" placeholder="Recherche un personnage..." onkeyup="filterCharacters('c1')">
-              <div id="dropdown-c1" class="dropdown-menu"></div>
+            <div class="dropdown-container">
+              <div class="dropdown-input" onclick="toggleDropdown('c1')">Sélectionne un personnage</div>
+              <div class="dropdown-list" id="dropdown-c1"></div>
             </div>
-            <div id="selected-c1" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
+            <div class="selected-display" id="display-c1"></div>
           </div>
           <div>
             <label>Personnage J2</label>
-            <div class="search-wrapper">
-              <input type="text" id="search-c2" class="search-input" placeholder="Recherche un personnage..." onkeyup="filterCharacters('c2')">
-              <div id="dropdown-c2" class="dropdown-menu"></div>
+            <div class="dropdown-container">
+              <div class="dropdown-input" onclick="toggleDropdown('c2')">Sélectionne un personnage</div>
+              <div class="dropdown-list" id="dropdown-c2"></div>
             </div>
-            <div id="selected-c2" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
+            <div class="selected-display" id="display-c2"></div>
           </div>
         </div>
         <div class="form-row-l">
@@ -198,7 +201,7 @@
       'Dark Pit', 'Pit', 'Robin', 'Lucario', 'Incineroar', 'Cloud', 'Sephiroth',
       'Byleth', 'Banjo & Kazooie', 'Terry', 'Kazuya', 'Sora', 'Steve', 'Alex',
       'Creeper', 'Joker', 'Hero', 'Erdrick', 'Piranha Plant', 'Min Min', 'Mythra',
-      'Pyra', 'Sephiroth', 'Cinderace', 'Rillaboom', 'Grookey'
+      'Pyra', 'Cinderace', 'Rillaboom', 'Grookey'
     ];
 
     const firebaseConfig = {
@@ -302,79 +305,50 @@
       const players = Object.keys(smashState.players || {});
       
       document.getElementById('dropdown-p1').innerHTML = players.map(p => 
-        `<div class="dropdown-item" onclick="selectPlayer('p1', '${p}')">${p}</div>`
+        `<div class="dropdown-list-item" onclick="selectPlayer('p1', '${p}')">${p}</div>`
       ).join('');
       
       document.getElementById('dropdown-p2').innerHTML = players.map(p => 
-        `<div class="dropdown-item" onclick="selectPlayer('p2', '${p}')">${p}</div>`
+        `<div class="dropdown-list-item" onclick="selectPlayer('p2', '${p}')">${p}</div>`
       ).join('');
       
       document.getElementById('dropdown-c1').innerHTML = smashCharacters.map(c => 
-        `<div class="dropdown-item" onclick="selectCharacter('c1', '${c}')">${c}</div>`
+        `<div class="dropdown-list-item" onclick="selectCharacter('c1', '${c}')">${c}</div>`
       ).join('');
       
       document.getElementById('dropdown-c2').innerHTML = smashCharacters.map(c => 
-        `<div class="dropdown-item" onclick="selectCharacter('c2', '${c}')">${c}</div>`
+        `<div class="dropdown-list-item" onclick="selectCharacter('c2', '${c}')">${c}</div>`
       ).join('');
     }
 
-    function filterPlayers(player) {
-      const input = document.getElementById(`search-${player}`).value.toLowerCase();
-      const dropdown = document.getElementById(`dropdown-${player}`);
-      const players = Object.keys(smashState.players || {});
-      
-      if (!input) {
-        dropdown.classList.remove('show');
-        return;
-      }
-      
-      const filtered = players.filter(p => p.toLowerCase().includes(input));
-      dropdown.innerHTML = filtered.map(p => 
-        `<div class="dropdown-item" onclick="selectPlayer('${player}', '${p}')">${p}</div>`
-      ).join('');
-      dropdown.classList.add('show');
+    function toggleDropdown(type) {
+      document.getElementById(`dropdown-${type}`).classList.toggle('show');
     }
 
-    function filterCharacters(char) {
-      const input = document.getElementById(`search-${char}`).value.toLowerCase();
-      const dropdown = document.getElementById(`dropdown-${char}`);
-      
-      if (!input) {
-        dropdown.classList.remove('show');
-        return;
-      }
-      
-      const filtered = smashCharacters.filter(c => c.toLowerCase().includes(input));
-      dropdown.innerHTML = filtered.map(c => 
-        `<div class="dropdown-item" onclick="selectCharacter('${char}', '${c}')">${c}</div>`
-      ).join('');
-      dropdown.classList.add('show');
+    function closeAllDropdowns() {
+      document.querySelectorAll('.dropdown-list').forEach(el => el.classList.remove('show'));
     }
 
     function selectPlayer(player, name) {
       if (player === 'p1') {
         selectedPlayer1 = name;
-        document.getElementById('search-p1').value = name;
-        document.getElementById('selected-p1').textContent = '✓ ' + name;
+        document.getElementById('display-p1').textContent = '✓ ' + name;
       } else {
         selectedPlayer2 = name;
-        document.getElementById('search-p2').value = name;
-        document.getElementById('selected-p2').textContent = '✓ ' + name;
+        document.getElementById('display-p2').textContent = '✓ ' + name;
       }
-      document.getElementById(`dropdown-${player}`).classList.remove('show');
+      closeAllDropdowns();
     }
 
     function selectCharacter(char, name) {
       if (char === 'c1') {
         selectedChar1 = name;
-        document.getElementById('search-c1').value = name;
-        document.getElementById('selected-c1').textContent = '✓ ' + name;
+        document.getElementById('display-c1').textContent = '✓ ' + name;
       } else {
         selectedChar2 = name;
-        document.getElementById('search-c2').value = name;
-        document.getElementById('selected-c2').textContent = '✓ ' + name;
+        document.getElementById('display-c2').textContent = '✓ ' + name;
       }
-      document.getElementById(`dropdown-${char}`).classList.remove('show');
+      closeAllDropdowns();
     }
 
     function saveSmashMatch() {
@@ -432,14 +406,10 @@
       selectedPlayer2 = '';
       selectedChar1 = '';
       selectedChar2 = '';
-      document.getElementById('search-p1').value = '';
-      document.getElementById('search-p2').value = '';
-      document.getElementById('search-c1').value = '';
-      document.getElementById('search-c2').value = '';
-      document.getElementById('selected-p1').textContent = '';
-      document.getElementById('selected-p2').textContent = '';
-      document.getElementById('selected-c1').textContent = '';
-      document.getElementById('selected-c2').textContent = '';
+      document.getElementById('display-p1').textContent = '';
+      document.getElementById('display-p2').textContent = '';
+      document.getElementById('display-c1').textContent = '';
+      document.getElementById('display-c2').textContent = '';
       switchSmashTab('classement');
     }
 
@@ -538,6 +508,12 @@
         </div>
       `).join('');
     }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dropdown-container')) {
+        closeAllDropdowns();
+      }
+    });
 
     initializeSmashData();
   </script>
