@@ -323,7 +323,7 @@
 ).join('');
       
       document.getElementById('dropdown-c2').innerHTML = smashCharacters.map(c =>
-  `<div class="dropdown-list-item" onclick="selectCharacter('c1', '${c}')">
+  `<div class="dropdown-list-item" onclick="selectCharacter('c2', '${c}')">
     <img src="img/${c.toLowerCase().replace(/[^a-z0-9]/g, '')}.png"
          onerror="this.style.display='none'"
          style="width:32px; height:32px; object-fit:contain; margin-right:8px;">
