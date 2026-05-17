@@ -312,13 +312,25 @@
         `<div class="dropdown-list-item" onclick="selectPlayer('p2', '${p}')">${p}</div>`
       ).join('');
       
-      document.getElementById('dropdown-c1').innerHTML = smashCharacters.map(c => 
-        `<div class="dropdown-list-item" onclick="selectCharacter('c1', '${c}')">${c}</div>`
-      ).join('');
+      document.getElementById('dropdown-c1').innerHTML = smashCharacters.map(c => {
+  const slug = c.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const imgUrl = `https://www.smashbros.com/assets_v2/img/fighter/thumb/${slug}/main.png`;
+  return `<div class="dropdown-list-item" onclick="selectCharacter('c1', '${c}')">
+    <img src="${imgUrl}" onerror="this.style.display='none'" 
+         style="width:32px; height:32px; object-fit:contain; vertical-align:middle; margin-right:8px;">
+    ${c}
+  </div>`;
+}).join('');
       
-      document.getElementById('dropdown-c2').innerHTML = smashCharacters.map(c => 
-        `<div class="dropdown-list-item" onclick="selectCharacter('c2', '${c}')">${c}</div>`
-      ).join('');
+      document.getElementById('dropdown-c2').innerHTML = smashCharacters.map(c => {
+  const slug = c.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const imgUrl = `https://www.smashbros.com/assets_v2/img/fighter/thumb/${slug}/main.png`;
+  return `<div class="dropdown-list-item" onclick="selectCharacter('c1', '${c}')">
+    <img src="${imgUrl}" onerror="this.style.display='none'" 
+         style="width:32px; height:32px; object-fit:contain; vertical-align:middle; margin-right:8px;">
+    ${c}
+  </div>`;
+}).join('');
     }
 
     function toggleDropdown(type) {
