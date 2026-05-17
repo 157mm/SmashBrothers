@@ -8,7 +8,7 @@
 <body>
 
 <div id="smash-league-app">
-  <h2 class="league-title">Smash Bros Ultimate League</h2>
+  <h2 class="league-title">Smash Brothers League</h2>
 
   <style>
     #smash-league-app { 
@@ -59,9 +59,10 @@
     .dropdown-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; cursor: pointer; background: white; }
     .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .dropdown-list.show { display: block; }
-    .dropdown-list-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+    .dropdown-list-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; display : flex; align-items: center }
     .dropdown-list-item:hover { background: #f5f5f5; }
     .dropdown-list-item.selected { background: #e3f2fd; font-weight: 600; }
+    
     
     .selected-display { color: #666; font-size: 12px; margin-top: 5px; min-height: 16px; }
     
@@ -341,16 +342,20 @@
       document.querySelectorAll('.dropdown-list').forEach(el => el.classList.remove('show'));
     }
 
-    function selectPlayer(player, name) {
-      if (player === 'p1') {
-        selectedPlayer1 = name;
-        document.getElementById('display-p1').textContent = '✓ ' + name;
-      } else {
-        selectedPlayer2 = name;
-        document.getElementById('display-p2').textContent = '✓ ' + name;
-      }
-      closeAllDropdowns();
-    }
+    function selectCharacter(char, name) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const imgUrl = `https://www.smashbros.com/assets_v2/img/fighter/thumb/${slug}/main.png`;
+  const imgHtml = `<img src="${imgUrl}" onerror="this.style.display='none'" 
+                        style="width:40px; height:40px; object-fit:contain; margin-right:8px;">`;
+  if (char === 'c1') {
+    selectedChar1 = name;
+    document.getElementById('display-c1').innerHTML = imgHtml + name;
+  } else {
+    selectedChar2 = name;
+    document.getElementById('display-c2').innerHTML = imgHtml + name;
+  }
+  closeAllDropdowns();
+}
 
     function selectCharacter(char, name) {
       if (char === 'c1') {
