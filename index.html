@@ -507,7 +507,7 @@ function selectCharacter(char, name) {
     function renderPlayerGrid() {
       const grid = document.getElementById('player-list-grid');
       grid.innerHTML = Object.values(smashState.players || {}).map(p => `
-        <div class="player-card" onclick='openPlayerProfile('${p.name}')">
+        <div class="player-card" onclick='openPlayerProfile('${p.name})">
           <div class="player-card-content">
             <div class="player-card-name">${p.name}</div>
             <div class="player-card-stats">
