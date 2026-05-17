@@ -340,6 +340,17 @@
       document.querySelectorAll('.dropdown-list').forEach(el => el.classList.remove('show'));
     }
 
+function selectPlayer(slot, name) {
+  if (slot === 'p1') {
+    selectedPlayer1 = name;
+    document.getElementById('display-p1').textContent = name;
+  } else {
+    selectedPlayer2 = name;
+    document.getElementById('display-p2').textContent = name;
+  }
+  closeAllDropdowns();
+}
+
     function selectCharacter(char, name) {
   const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '');
   const imgHtml = `<img src="img/${slug}.png" onerror="this.style.display='none'"
