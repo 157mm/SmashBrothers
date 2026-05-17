@@ -351,7 +351,7 @@ function selectPlayer(slot, name) {
   closeAllDropdowns();
 }
 
-    function selectCharacter(char, name) {
+function selectCharacter(char, name) {
   const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '');
   const imgHtml = `<img src="img/${slug}.png" onerror="this.style.display='none'"
                         style="width:40px; height:40px; object-fit:contain; margin-right:8px;">`;
@@ -360,46 +360,10 @@ function selectPlayer(slot, name) {
     document.getElementById('display-c1').innerHTML = imgHtml + name;
   } else {
     selectedChar2 = name;
-    document.getElementById('display-c1').innerHTML = imgHtml + name;
-  }
-  closeAllDropdowns();
-}
-
-    function selectCharacter(char, name) {
-      if (char === 'c1') {
-        selectedChar1 = name;
-        document.getElementById('display-c1').textContent = '✓ ' + name;
-      } else {
-        selectedChar2 = name;
-        document.getElementById('display-c1').textContent = '✓ ' + name;
-      }
-      closeAllDropdowns();
-    }
-
-    function selectCharacter(char, name) {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const imgHtml = `<img src="img/${slug}.png" onerror="this.style.display='none'"
-                        style="width:40px; height:40px; object-fit:contain; margin-right:8px;">`;
-  if (char === 'c2') {
-    selectedChar1 = name;
-    document.getElementById('display-c2').innerHTML = imgHtml + name;
-  } else {
-    selectedChar2 = name;
     document.getElementById('display-c2').innerHTML = imgHtml + name;
   }
   closeAllDropdowns();
 }
-
-    function selectCharacter(char, name) {
-      if (char === 'c2') {
-        selectedChar1 = name;
-        document.getElementById('display-c2').textContent = '✓ ' + name;
-      } else {
-        selectedChar2 = name;
-        document.getElementById('display-c2').textContent = '✓ ' + name;
-      }
-      closeAllDropdowns();
-    }
 
     function saveSmashMatch() {
       if (!selectedPlayer1 || !selectedPlayer2) {
