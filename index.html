@@ -53,14 +53,14 @@
     .btn-delete:hover { background: #b71c1c; }
     
     .form-row-l { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-    input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
     
-    .character-search-wrapper { position: relative; margin-bottom: 15px; }
-    .character-search-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-    .character-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto; display: none; z-index: 1000; }
-    .character-dropdown.active { display: block; }
-    .character-option { padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
-    .character-option:hover { background: #f5f5f5; }
+    .search-wrapper { position: relative; margin-bottom: 15px; }
+    .search-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .dropdown-menu { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 4px 4px; max-height: 250px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .dropdown-menu.show { display: block; }
+    .dropdown-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+    .dropdown-item:hover { background: #f5f5f5; }
     
     .trend-up { color: #2e7d32; }
     .trend-down { color: #d32f2f; }
@@ -115,25 +115,37 @@
         <div class="form-row-l">
           <div>
             <label>Joueur 1</label>
-            <input type="text" id="s-p1-input" placeholder="Recherche un joueur..." onkeyup="filterPlayerSearch('p1')">
-            <div id="p1-dropdown" class="character-dropdown"></div>
+            <div class="search-wrapper">
+              <input type="text" id="search-p1" class="search-input" placeholder="Recherche un joueur..." onkeyup="filterPlayers('p1')">
+              <div id="dropdown-p1" class="dropdown-menu"></div>
+            </div>
+            <div id="selected-p1" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
           </div>
           <div>
             <label>Joueur 2</label>
-            <input type="text" id="s-p2-input" placeholder="Recherche un joueur..." onkeyup="filterPlayerSearch('p2')">
-            <div id="p2-dropdown" class="character-dropdown"></div>
+            <div class="search-wrapper">
+              <input type="text" id="search-p2" class="search-input" placeholder="Recherche un joueur..." onkeyup="filterPlayers('p2')">
+              <div id="dropdown-p2" class="dropdown-menu"></div>
+            </div>
+            <div id="selected-p2" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
           </div>
         </div>
         <div class="form-row-l">
           <div>
             <label>Personnage J1</label>
-            <input type="text" id="s-c1-input" placeholder="Recherche un perso..." onkeyup="filterCharacterSearch('c1')">
-            <div id="c1-dropdown" class="character-dropdown"></div>
+            <div class="search-wrapper">
+              <input type="text" id="search-c1" class="search-input" placeholder="Recherche un personnage..." onkeyup="filterCharacters('c1')">
+              <div id="dropdown-c1" class="dropdown-menu"></div>
+            </div>
+            <div id="selected-c1" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
           </div>
           <div>
             <label>Personnage J2</label>
-            <input type="text" id="s-c2-input" placeholder="Recherche un perso..." onkeyup="filterCharacterSearch('c2')">
-            <div id="c2-dropdown" class="character-dropdown"></div>
+            <div class="search-wrapper">
+              <input type="text" id="search-c2" class="search-input" placeholder="Recherche un personnage..." onkeyup="filterCharacters('c2')">
+              <div id="dropdown-c2" class="dropdown-menu"></div>
+            </div>
+            <div id="selected-c2" style="color: #666; font-size: 12px; margin-top: 5px;"></div>
           </div>
         </div>
         <div class="form-row-l">
@@ -173,51 +185,22 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
-    // Liste complète des personnages de Smash Bros Ultimate
     const smashCharacters = [
       'Mario', 'Luigi', 'Peach', 'Bowser', 'Yoshi', 'Rosalina', 'Daisy', 'Waluigi',
-      'Donkey Kong', 'Diddy Kong', 'Wario',
-      'Link', 'Zelda', 'Sheik', 'Ganondorf', 'Young Link', 'Toon Link',
-      'Pikachu', 'Mewtwo', 'Charizard', 'Jigglypuff',
-      'Snorlax', 'Pichu', 'Squirtle', 'Ivysaur',
-      'Samus', 'Zero Suit Samus', 'Ridley',
-      'Kirk', 'Meta Knight',
-      'Fox', 'Falco', 'Wolf',
-      'Captain Falcon',
-      'Ness', 'Lucas', 'Ike', 'Marth', 'Roy', 'Chrom', 'Lucina', 'Corrin',
-      'Samurai', 'Shulk', 'Mii Gunner', 'Mii Swordfighter', 'Mii Brawler',
-      'Sonic', 'Shadow', 'Bayonetta',
-      'Mega Man', 'Pac-Man',
-      'Ryu', 'Ken', 'Juri',
-      'Villager', 'Tom Nook', 'Isabelle',
-      'Mr. Game & Watch', 'ROB',
-      'Duck Hunt', 'R.O.B',
-      'Wii Fit Trainer',
-      'Little Mac',
-      'Greninja',
-      'Palutena', 'Dark Pit', 'Pit',
-      'Robin', 'Tharja',
-      'Lucario',
-      'Incineroar',
-      'Cloud', 'Sephiroth',
-      'Bayonetta',
-      'Corrin',
-      'Byleth',
-      'Banjo & Kazooie',
-      'Terry',
-      'Kazuya',
-      'Sora',
-      'Steve',
-      'Alex',
-      'Creeper',
-      'Ender Dragon',
-      'Joker', 'Persona',
-      'Hero', 'Erdrick',
-      'Piranha Plant',
-      'Arsene', 'Joker'
+      'Donkey Kong', 'Diddy Kong', 'Wario', 'Link', 'Zelda', 'Sheik', 'Ganondorf',
+      'Young Link', 'Toon Link', 'Pikachu', 'Mewtwo', 'Charizard', 'Jigglypuff',
+      'Pichu', 'Squirtle', 'Ivysaur', 'Samus', 'Zero Suit Samus', 'Ridley',
+      'Meta Knight', 'Fox', 'Falco', 'Wolf', 'Captain Falcon', 'Ness', 'Lucas',
+      'Ike', 'Marth', 'Roy', 'Chrom', 'Lucina', 'Corrin', 'Shulk', 'Mii Gunner',
+      'Mii Swordfighter', 'Mii Brawler', 'Sonic', 'Bayonetta', 'Mega Man', 'Pac-Man',
+      'Ryu', 'Ken', 'Juri', 'Villager', 'Isabelle', 'Mr. Game & Watch', 'ROB',
+      'Duck Hunt', 'Wii Fit Trainer', 'Little Mac', 'Greninja', 'Palutena',
+      'Dark Pit', 'Pit', 'Robin', 'Lucario', 'Incineroar', 'Cloud', 'Sephiroth',
+      'Byleth', 'Banjo & Kazooie', 'Terry', 'Kazuya', 'Sora', 'Steve', 'Alex',
+      'Creeper', 'Joker', 'Hero', 'Erdrick', 'Piranha Plant', 'Min Min', 'Mythra',
+      'Pyra', 'Sephiroth', 'Cinderace', 'Rillaboom', 'Grookey'
     ];
 
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyAvs_eAQmvgcwtXbqZqlXqNQzi7aP0GE9I",
       authDomain: "smashbrothers-5359e.firebaseapp.com",
@@ -228,7 +211,6 @@
       appId: "1:593747270233:web:42407d8900ca6e5c20ef48"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     
@@ -305,98 +287,97 @@
         updateSyncStatus();
         setupFirebaseListener();
       }).catch((error) => {
-        console.error('Erreur lors du chargement:', error);
+        console.error('Erreur:', error);
         alert('Erreur de connexion à Firebase.');
       });
     }
 
     function saveSmashData() {
-      if (!isInitialized) {
-        alert('L\'application est en cours de chargement.');
-        return;
-      }
       dbRef.set(smashState).catch((error) => {
-        console.error('Erreur de sauvegarde:', error);
-        alert('Erreur de sauvegarde: ' + error.message);
+        console.error('Erreur:', error);
       });
     }
 
     function setupMatchForm() {
       const players = Object.keys(smashState.players || {});
       
-      // Joueur 1
-      document.getElementById('p1-dropdown').innerHTML = players.map(p => 
-        `<div class="character-option" onclick="selectPlayer('p1', '${p}')">${p}</div>`
+      document.getElementById('dropdown-p1').innerHTML = players.map(p => 
+        `<div class="dropdown-item" onclick="selectPlayer('p1', '${p}')">${p}</div>`
       ).join('');
       
-      // Joueur 2
-      document.getElementById('p2-dropdown').innerHTML = players.map(p => 
-        `<div class="character-option" onclick="selectPlayer('p2', '${p}')">${p}</div>`
+      document.getElementById('dropdown-p2').innerHTML = players.map(p => 
+        `<div class="dropdown-item" onclick="selectPlayer('p2', '${p}')">${p}</div>`
       ).join('');
       
-      // Personnages
-      const charOptions = smashCharacters.map(c => 
-        `<div class="character-option" onclick="selectCharacter('c1', '${c}')">${c}</div>`
+      document.getElementById('dropdown-c1').innerHTML = smashCharacters.map(c => 
+        `<div class="dropdown-item" onclick="selectCharacter('c1', '${c}')">${c}</div>`
       ).join('');
-      document.getElementById('c1-dropdown').innerHTML = charOptions;
       
-      const charOptions2 = smashCharacters.map(c => 
-        `<div class="character-option" onclick="selectCharacter('c2', '${c}')">${c}</div>`
+      document.getElementById('dropdown-c2').innerHTML = smashCharacters.map(c => 
+        `<div class="dropdown-item" onclick="selectCharacter('c2', '${c}')">${c}</div>`
       ).join('');
-      document.getElementById('c2-dropdown').innerHTML = charOptions2;
     }
 
-    function filterPlayerSearch(player) {
-      const input = document.getElementById(`s-${player}-input`).value.toLowerCase();
-      const dropdown = document.getElementById(`${player}-dropdown`);
+    function filterPlayers(player) {
+      const input = document.getElementById(`search-${player}`).value.toLowerCase();
+      const dropdown = document.getElementById(`dropdown-${player}`);
       const players = Object.keys(smashState.players || {});
+      
+      if (!input) {
+        dropdown.classList.remove('show');
+        return;
+      }
       
       const filtered = players.filter(p => p.toLowerCase().includes(input));
       dropdown.innerHTML = filtered.map(p => 
-        `<div class="character-option" onclick="selectPlayer('${player}', '${p}')">${p}</div>`
+        `<div class="dropdown-item" onclick="selectPlayer('${player}', '${p}')">${p}</div>`
       ).join('');
-      dropdown.classList.add('active');
+      dropdown.classList.add('show');
     }
 
-    function filterCharacterSearch(char) {
-      const input = document.getElementById(`s-${char}-input`).value.toLowerCase();
-      const dropdown = document.getElementById(`${char}-dropdown`);
+    function filterCharacters(char) {
+      const input = document.getElementById(`search-${char}`).value.toLowerCase();
+      const dropdown = document.getElementById(`dropdown-${char}`);
+      
+      if (!input) {
+        dropdown.classList.remove('show');
+        return;
+      }
       
       const filtered = smashCharacters.filter(c => c.toLowerCase().includes(input));
       dropdown.innerHTML = filtered.map(c => 
-        `<div class="character-option" onclick="selectCharacter('${char}', '${c}')">${c}</div>`
+        `<div class="dropdown-item" onclick="selectCharacter('${char}', '${c}')">${c}</div>`
       ).join('');
-      dropdown.classList.add('active');
+      dropdown.classList.add('show');
     }
 
     function selectPlayer(player, name) {
       if (player === 'p1') {
         selectedPlayer1 = name;
-        document.getElementById('s-p1-input').value = name;
+        document.getElementById('search-p1').value = name;
+        document.getElementById('selected-p1').textContent = '✓ ' + name;
       } else {
         selectedPlayer2 = name;
-        document.getElementById('s-p2-input').value = name;
+        document.getElementById('search-p2').value = name;
+        document.getElementById('selected-p2').textContent = '✓ ' + name;
       }
-      document.getElementById(`${player}-dropdown`).classList.remove('active');
+      document.getElementById(`dropdown-${player}`).classList.remove('show');
     }
 
     function selectCharacter(char, name) {
       if (char === 'c1') {
         selectedChar1 = name;
-        document.getElementById('s-c1-input').value = name;
+        document.getElementById('search-c1').value = name;
+        document.getElementById('selected-c1').textContent = '✓ ' + name;
       } else {
         selectedChar2 = name;
-        document.getElementById('s-c2-input').value = name;
+        document.getElementById('search-c2').value = name;
+        document.getElementById('selected-c2').textContent = '✓ ' + name;
       }
-      document.getElementById(`${char}-dropdown`).classList.remove('active');
+      document.getElementById(`dropdown-${char}`).classList.remove('show');
     }
 
     function saveSmashMatch() {
-      if (!isInitialized) {
-        alert('L\'application est en cours de chargement.');
-        return;
-      }
-      
       if (!selectedPlayer1 || !selectedPlayer2) {
         alert('Sélectionne les deux joueurs');
         return;
@@ -451,10 +432,14 @@
       selectedPlayer2 = '';
       selectedChar1 = '';
       selectedChar2 = '';
-      document.getElementById('s-p1-input').value = '';
-      document.getElementById('s-p2-input').value = '';
-      document.getElementById('s-c1-input').value = '';
-      document.getElementById('s-c2-input').value = '';
+      document.getElementById('search-p1').value = '';
+      document.getElementById('search-p2').value = '';
+      document.getElementById('search-c1').value = '';
+      document.getElementById('search-c2').value = '';
+      document.getElementById('selected-p1').textContent = '';
+      document.getElementById('selected-p2').textContent = '';
+      document.getElementById('selected-c1').textContent = '';
+      document.getElementById('selected-c2').textContent = '';
       switchSmashTab('classement');
     }
 
@@ -520,10 +505,6 @@
     }
 
     function addNewPlayer() {
-      if (!isInitialized) {
-        alert('L\'application est en cours de chargement.');
-        return;
-      }
       const name = document.getElementById('new-player-name').value.trim();
       if (!name) return alert("Veuillez entrer un nom");
       if (smashState.players[name]) return alert("Ce joueur existe déjà");
@@ -534,10 +515,6 @@
     }
 
     function deletePlayer(name) {
-      if (!isInitialized) {
-        alert('L\'application est en cours de chargement.');
-        return;
-      }
       if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
         delete smashState.players[name];
         saveSmashData();
